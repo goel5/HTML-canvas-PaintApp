@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        #canv {
+            /* margin-top: 50px; */
+            text-align: center;
+            padding: 0 15%;
+        }
+
+        h1 {
+            text-align: center;
+            margin-top: 50px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 4px;
+        }
+
+        #button {
+            text-align: right;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Simple Paint App</h1>
+    <div id="canv">
+
+        <canvas id="canvas" width="1330px" height="800px" style=" border:2px solid black;"></canvas>
+        <div id="button"><button id="clean">Clear</button></div>
+    </div>
+    <script>
+        const canvasButton = document.getElementById('clean');
+        const canvasEle = document.getElementById('canvas');
+        var shapes = [];
+
+        // drag related vars
+        var isDragging = false;
+        var startX, startY;
+        // hold the index of the shape being dragged (if any)
+        var selectedShapeIndex;
+
+        const context = canvasEle.getContext('2d');
+        const onClick = () => {
+            context.clearRect(0, 0, canvasEle.width, canvasEle.height);
+        }
+        let startPosition = { x: canvasEle.offsetLeft, y: canvasEle.offsetTop };
+        let lineCoordinates = { x: canvasEle.offsetLeft, y: canvasEle.offsetTop };
+        let isDrawStart = false;
+        let midCoordinates = { x: canvasEle.offsetLeft, y: canvasEle.offsetTop };
+        let r = 0;
+        let g = 0;
+        let b = 0;
+        let col;
+        const getClientOffset = (event) => {
+            const { pageX, pageY } = event;
+            const x = pageX - canvasEle.offsetLeft;
+            const y = pageY - canvasEle.offsetTop;
+            return { x, y }
+        }
+        const drawLine = () => {
+            drawAll();
+            context.beginPath();
+            context.moveTo(startPosition.x, startPosition.y);
+            col = "rgb(" + r + "," + g + "," + b + ")";
+            context.fillStyle = col;
+            context.fillRect(startPosition.x, startPosition.y, lineCoordinates.x - startPosition.x, lineCoordinates.y - startPosition.y);
+        }
+        function isMouseInShape(mx, my, shape) {
+            if (shape.width) {
+                // this is a rectangle
+                var rLeft = shape.x;
+                var rRight = shape.x + shape.width;
+                var rTop = shape.y;
+                var rBott = shape.y + shape.height;
+                // math test to see if mouse is inside rectangle
+                if (mx > rLeft && mx < rRight && my > rTop && my < rBott) {
+                    return (true);
+                }
+            }
+            // the mouse isn't in any of the shapes
+            return (false);
+        }
+        const mouseDownListener = (event) => {
+            startX = parseInt(event.clientX - canvasEle.offsetLeft);
+            startY = parseInt(event.clientY - canvasEle.offsetTop);
+            // test mouse position against all shapes
+            // post result if mouse is in a shape
+            for (var i = 0; i < shapes.length; i++) {
+                if (isMouseInShape(startX, startY, shapes[i])) {
+                    // the mouse is inside this shape
+                    // select this shape
+                    selectedShapeIndex = i;
+                    // set the isDragging flag
+                    isDragging = true;
+                    // and return (==stop looking for 
+                    //     further shapes under the mouse)
+                    return;
+                }
+            }
+            startPosition = getClientOffset(event);
+            isDrawStart = true;
+        }
+        const mouseMoveListener = (event) => {
+            // return if we're not dragging
+            if (isDragging) {
+                // tell the browser we're handling this event
+                event.preventDefault();
+                event.stopPropagation();
+                // calculate the current mouse position         
+                mouseX = (event.clientX - canvasEle.offsetLeft);
+                mouseY = (event.clientY - canvasEle.offsetTop);
+                // how far has the mouse dragged from its previous mousemove position?
+                var dx = mouseX - startX;
+                var dy = mouseY - startY;
+                // move the selected shape by the drag distance
+                var selectedShape = shapes[selectedShapeIndex];
+                selectedShape.x += dx;
+                selectedShape.y += dy;
+                // clear the canvas and redraw all shapes
+                drawAll();
+                // update the starting drag position (== the current mouse position)
+                startX = mouseX;
+                startY = mouseY;
+            }
+            else if (isDrawStart) {
+                // drawAll();
+                if (lineCoordinates.x !== canvasEle.offsetLeft && lineCoordinates.y !== canvasEle.offsetTop) {
+                    clearCanvas();
+                }
+                lineCoordinates = getClientOffset(event);
+                drawLine();
+                midCoordinates = lineCoordinates;
+            }
+            else return;
+        }
+        const mouseupListener = () => {
+            if (isDragging) {
+                shapes.push({ x: startPosition.x, y: startPosition.y, width: lineCoordinates.x - startPosition.x, height: lineCoordinates.y - startPosition.y, color: col })
+                startPosition = { x: canvasEle.offsetLeft, y: canvasEle.offsetTop };
+                lineCoordinates = { x: canvasEle.offsetLeft, y: canvasEle.offsetTop };
+                isDrawStart = false;
+                midCoordinates = { x: canvasEle.offsetLeft, y: canvasEle.offsetTop };
+                r = Math.floor(Math.random() * 256);
+                g = Math.floor(Math.random() * 256);
+                b = Math.floor(Math.random() * 256);
+            }
+            else {
+                e.preventDefault();
+                e.stopPropagation();
+                // the drag is over -- clear the isDragging flag
+                isDragging = false;
+            }
+        }
+        function handleMouseOut(event) {
+            // return if we're not dragging
+            if (!isDragging) { return; }
+            // tell the browser we're handling this event
+            event.preventDefault();
+            event.stopPropagation();
+            // the drag is over -- clear the isDragging flag
+            isDragging = false;
+        }
+        const clearCanvas = () => {
+            if (startPosition.x < midCoordinates.x && startPosition.y > midCoordinates.y) {
+                context.clearRect(startPosition.x - 1, midCoordinates.y - 1, midCoordinates.x - startPosition.x + 2, startPosition.y - midCoordinates.y + 2);
+            }
+            else if (startPosition.x > midCoordinates.x && startPosition.y > midCoordinates.y) {
+                context.clearRect(midCoordinates.x - 1, midCoordinates.y - 1, startPosition.x - midCoordinates.x + 2, startPosition.y - midCoordinates.y + 2);
+            }
+            else if (startPosition.x > midCoordinates.x && startPosition.y < midCoordinates.y) {
+                context.clearRect(midCoordinates.x - 1, startPosition.y - 1, startPosition.x - midCoordinates.x + 2, midCoordinates.y - startPosition.y + 2);
+            }
+            else {
+                context.clearRect(startPosition.x - 1, startPosition.y - 1, midCoordinates.x - startPosition.x + 2, midCoordinates.y - startPosition.y + 2);
+            }
+        }
+        function drawAll() {
+            context.clearRect(0, 0, canvasEle.width, canvasEle.height);
+            for (var i = 0; i < shapes.length; i++) {
+                var shape = shapes[i];
+                context.fillStyle = shape.color;
+                context.fillRect(shape.x, shape.y, shape.width, shape.height);
+            }
+        }
+
+
+
+
+
+        canvasEle.addEventListener('mousedown', mouseDownListener);
+        canvasEle.addEventListener('mousemove', mouseMoveListener);
+        canvasEle.addEventListener('mouseup', mouseupListener);
+        canvasEle.addEventListener("onmouseout", handleMouseOut);
+        canvasButton.addEventListener('mousedown', onClick);
+    </script>
+</body>
+
+</html>
